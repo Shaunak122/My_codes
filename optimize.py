@@ -27,7 +27,7 @@ import sys
 import pickle
 import argparse
 from pathlib import Path
-import cfgparam as cfgparams
+import cfgparams
 import data_utils
 import feat_gen
 import pdb
