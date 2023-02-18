@@ -122,7 +122,7 @@ def get_trained_model(x_trn, y_trn,target):
 
 
 # %%
-def eval_model(x_tes, y_tes, model_info):
+def eval_model(x_tes, y_tes, model_info,train_middle):
     model = model_info['model']
     tfm_x = model_info['transform_x']
     tfm_y = model_info['transform_y']
@@ -159,8 +159,8 @@ def get_eval_info(cfg_params, model_info, target, dftrn, dftes):
     y_tes = dftes[target] if target in dftes.columns else pd.Series(pd.NA, range(len(dftes)))
     y_trn = dftrn[target]
     logger.info(f"{target} test data - x: {x_tes.shape}, y: {y_tes.shape}")
-    eval_info = eval_model(x_tes, y_tes, model_info)
     train_middle = model_info['train_middle']
+    eval_info = eval_model(x_tes, y_tes, model_info, train_middle)
     mae_mean = get_train_mae(cfg_params, target, train_middle, y_tes, y_trn)
     eval_info['mae_mean'] = mae_mean
     eval_info['train_middle'] = train_middle
@@ -177,24 +177,27 @@ def get_eval_info(cfg_params, model_info, target, dftrn, dftes):
 
 # %%
 def get_train_mae(cfg_params, target, trn_middle, y_tes, y_trn):
-    preds = np.repeat(trn_middle,len(y_tes))
+    preds = np.repeat(trn_middle, len(y_tes))
     if pd.api.types.is_numeric_dtype(y_trn):
         logger.info("Data is numeric")
         if y_tes.isna().sum() == 0:
             logger.info("Test data has no nan. mae calculated") 
-            mae_mean = mean_absolute_error(y_tes,preds)
+            mae_mean = mean_absolute_error(y_tes, preds)
         else:
             perc_nans = y_tes.isna().sum()/len(y_tes)
             logger.info(f"Test data has {perc_nans*100}% nans.")
             #if perc_nans < 0.05:
             logger.info("Replacing nans with 0. mae calculated")
             def_val = data_utils.get_default_val(cfg_params, target)
-            y_tes.fillna(def_val,inplace=True)
-            mae_mean = mean_absolute_error(y_tes,preds)
+            y_tes.fillna(def_val, inplace=True)
+            mae_mean = mean_absolute_error(y_tes, preds)
             #else:
             #    logger.info("error rate calculated")
             #    mae_mean = 1-np.isclose(y_tes.values, preds, equal_nan=True).sum()/len(y_tes)
     else:
+        if y_tes.isna().sum()!=0:
+            def_val = data_utils.get_default_val(cfg_params, target)
+            y_tes.fillna(def_val, inplace=True)
         logger.info("Data is non numeric. error rate calculated")
         mae_mean = (y_tes.values!=preds).sum()/len(y_tes)
     return mae_mean
