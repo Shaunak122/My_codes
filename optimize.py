@@ -27,7 +27,7 @@ import sys
 import pickle
 import argparse
 from pathlib import Path
-import cfgparams
+import cfgparam as cfgparams
 import data_utils
 import feat_gen
 import pdb
@@ -35,7 +35,7 @@ from parameters import save_parameters,opt_model
 pad_value = 0
 cfg_params = cfgparams.CfgParams().load()
 logger = data_utils.get_logger("Optimize", cfg_params.log_fn)
-
+from optuna.samplers import TPESampler
 
 # %%
 def train_model(x_trn, y_trn, trial):
@@ -45,7 +45,7 @@ def train_model(x_trn, y_trn, trial):
     gbt_max_leaf_nodes = trial.suggest_int("gbt_max_leaf_nodes", 2, 12, log=True)
     gbt_learning_rate = trial.suggest_float("gbt_learning_rate", 0.001, 0.5, log=True)
     model = HistGradientBoostingRegressor(loss='absolute_error', learning_rate=gbt_learning_rate, max_iter=gbt_max_iter,
-                                          max_depth=gbt_max_depth, max_leaf_nodes=gbt_max_leaf_nodes)
+                                          max_depth=gbt_max_depth, max_leaf_nodes=gbt_max_leaf_nodes,l2_regularization=0.1)
     model.fit(x_trn, y_trn.squeeze())
     return model
 
@@ -267,7 +267,8 @@ if __name__ == '__main__':
     for i, param in enumerate(optim_params):
         args.target = param
         logger.info(f"Optimizing Parameter {i}: {param}")
-        study = optuna.create_study(direction="minimize")
+        sampler = TPESampler(seed=0)
+        study = optuna.create_study(direction="minimize",sampler=sampler)
         study.optimize(run, n_trials=100)
         print(study.best_trial)
         save_parameters(study.best_trial.params,param)
